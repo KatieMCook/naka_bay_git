@@ -1166,6 +1166,39 @@ pca_new+geom_text_repel(data = pc2.dfs[! pc2.dfs$yearcount== 'old',], aes(x=A1, 
 #make two panel plot 
 grid.arrange(pca_old, pca_new, ncol = 2, nrow = 1)
 
+#now look at the fish depth compression data
+shallow_sp<- traits_final[c(which(traits_final$DRange<=10)),]
+
+#check min and max depth with main trait db
+shal<-which(traits$Species %in% shallow_sp$species)
+
+traits_shallow<- traits[shal,] #ok they're all super shallow species
+
+
+shallow_sp<-shallow_sp[,c(8,9,10)]
+
+shallow_sp$sum<- shallow_sp$`1976`+shallow_sp$`2018`
+
+shallow_sp<-shallow_sp[-c(which(shallow_sp$sum==0)),]
+
+shallow_sp$pres<-'fill'
+
+both<- which(shallow_sp$sum==2)
+
+shallow_sp$pres[both]<-'both'
+
+old<- which(shallow_sp$`2018`==0)
+
+shallow_sp$pres[old]<-'1976'
+
+new<-which(shallow_sp$`1976`==0)
+
+shallow_sp$pres[new]<-'2018'
+
+shallow_sp<-as.data.frame(shallow_sp)
+#shallow specialists altered / replaced/ stay but still many present/ 
+
+
 #########################################################
 ###############ok make coral figure!#####################----
 coral<-read.csv('combined_76_18_coral.csv')
@@ -1475,4 +1508,98 @@ pca_new_lab<- pca_new+ geom_text_repel(data = pco2_coral.df[! pco2_coral.df$year
 
 pca_new_lab
 
+#now do plot by depth 
+depth<- read.csv('coral_depth_year_abun.csv')
+depth$Genus<-as.character(depth$Genus)
 
+#check the genus matches the traits 
+depth_gen<-unique(depth$Genus)
+depth_gen<-as.character(depth_gen)
+
+pca_gen<- pco2_coral.df$genus
+
+which (! depth_gen %in% pca_gen)
+
+depth_gen[c(6,15,25)]
+
+#spell this correct Seriatpora 
+#change favia to 
+#make monsteastrea 
+
+depth$Genus[depth$Genus=='Favia']<-'Dipsastraea'
+depth$Genus[depth$Genus=='Montastrea']<-'Astrea'
+depth$Genus[depth$Genus=='Seriatpora']<-'Seriatopora'
+
+#ok 
+#now decide what categories to make deep medium shallow?
+depth_70<-filter(depth, year==1975)
+hist(depth_70$depth)
+
+range(depth_70$depth) #1.5-12m 0-4, 4-8, 8-12?
+
+depth$cat<- depth$depth
+
+depth$cat[depth$cat > 0 & depth$cat < 5]<- 'shallow'
+depth$cat[depth$cat >=  5 & depth$cat < 8]<- 'medium'
+depth$cat[! depth$cat == 'shallow' & ! depth$cat =='medium']<- 'deep'
+
+length(which(depth$cat=='shallow')) #13
+length(which(depth$cat=='medium')) #27
+length(which(depth$cat=='deep')) #18
+
+depth$Genus<-as.factor(depth$Genus)
+depth$year<-as.character(depth$year)
+depth$year<-as.integer(depth$year)
+
+#ggplot the depths
+depth_com_plot<-ggplot(depth, aes(x=year, y=depth, col=Genus))+
+  geom_line()+
+  geom_point(aes(size=abundance))+
+  theme_bw()
+
+depth_com_plot
+
+
+pco2_coral.df
+#ok two panel pca plot 1975 and 2018 colour by deep, med or shallow, can see which corals change and change in abundance
+
+#add depth data to pca 
+pco2_coral.df
+
+depth$Genus<-as.character(depth$Genus)
+
+depth<- depth %>% rename(genus=Genus)
+
+#need to make 70s depth pca and a 2018 one
+pco2_70<-pco2_coral.df
+pco2_18<-pco2_coral.df
+
+depth_70<- depth %>% filter(year=='1975')
+depth_18<- depth %>% filter(year=='2018')
+
+pco2_70 <- left_join(pco2_70, depth_70, by='genus')
+pco2_18<- left_join(pco2_18, depth_18, by='genus')
+
+pco2_70[which(is.na(pco2_70$depth)),]
+pco2_18[which(is.na(pco2_18$depth)),]
+
+pco2_70<- pco2_70 %>% filter(! yearcount=='2018')
+pco2_18<-pco2_18 %>% filter(! yearcount=='1975')
+
+pca_old_depth<- ppp+
+  geom_polygon(data=glob_hull_coral,aes(x=A1,y=A2),fill=NA,colour="grey70")+
+  geom_point(data=pco2_70, aes(x=A1, y=A2, col=cat, size=abundance))+
+  theme_bw()
+
+pca_old_depth
+
+pca_new_depth<- ppp+
+  geom_polygon(data=glob_hull_coral,aes(x=A1,y=A2),fill=NA,colour="grey70")+
+  geom_point(data=pco2_18, aes(x=A1, y=A2, col=cat, size=abundance))+
+  theme_bw()
+pca_new_depth
+
+
+grid.arrange(pca_old_depth, pca_new_depth, nrow=1, ncol=2) #ok just need to figure out why some are missing
+
+#ellen needs to email me?
