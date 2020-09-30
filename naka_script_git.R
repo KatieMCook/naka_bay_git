@@ -343,6 +343,8 @@ old_new$year<-as.factor(old_new$year)
 #work out the species richness for each site by year
 rich<- old_new %>% group_by(site, year) %>% summarise (richness=sum(abun))
 
+torm<-which(is.na(rich$site))
+rich<- rich[-torm, ]
 
 ggplot(rich, aes(x=site, y=richness, col=year))+
   geom_point()
@@ -369,9 +371,14 @@ species<-data.frame(species)
 #write.csv(species, 'all_sp_naka.csv')
 rich_18<- rich %>% filter(! year==2019)
 
+which(is.na(rich_18$site))
+rich_18<- rich_18[-29,]    
+
 rich_plot<- ggplot(rich_18, aes(x=site, y=richness, fill=year))+
   geom_bar(stat='identity',position=position_dodge())+
   theme_bw()
+  
+
 
 rich_plot
 
@@ -537,9 +544,11 @@ site_matrix_18<- acast(old_182, site_year~species)
 torm<-which(rownames(site_matrix_18)== '1_1976' | rownames(site_matrix_18)== '4_1976' | rownames(site_matrix_18)== '6_1976' |
               rownames(site_matrix_18)== '8_1976' | rownames(site_matrix_18)== '15_1976' | rownames(site_matrix_18)== '18_1976' |
               rownames(site_matrix_18)== '21_1976' | rownames(site_matrix_18)== '22_1976' | rownames(site_matrix_18)== '24_1976' |
-              rownames(site_matrix_18)== '28_1976')
+              rownames(site_matrix_18)== '28_1976' | rownames(site_matrix_18)== "NA_2018")
 
 site_matrix_182<-site_matrix_18[-c(torm),]
+
+
 
 #now pca 
 pca18<- rda(site_matrix_182)
@@ -571,7 +580,7 @@ site_scores18$year<-site_name_year18$year
 
 
 rda.plot18<- ggplot(site_scores18, aes(x=PC1, y=PC2, col=year))+
-  geom_text_repel( aes(label=site))
+  geom_text( aes(label=site))
 
 rda.plot18
 
@@ -932,11 +941,13 @@ colors_to_use<-colors_to_use[order.dendrogram(dend)]
 
 colors_to_use
 
-colors_to_use[colors_to_use=='old']<-'cornflower blue'
+colors_to_use[colors_to_use=='old']<- '#F8766D'
 
-colors_to_use[colors_to_use=='both']<-'orange'
+colors_to_use[colors_to_use=='both']<-'grey'
 
-colors_to_use[colors_to_use=='new']<-'pink'
+colors_to_use[colors_to_use=='new']<-'#00BFC4'
+
+
 
 #now we can use them
 labels_colors(dend)<-colors_to_use
@@ -1140,24 +1151,33 @@ pca_plot_col<- ppp+
   geom_polygon(data=glob_hull,aes(x=A1,y=A2),fill=NA,colour="grey70")+
   geom_point(data=pc2.dfs, aes(x=A1, y=A2, col=yearcount))+
   geom_polygon(data=old_hull,aes(x=A1,y=A2),alpha=0.08, fill='green',colour="green")+
-  geom_polygon(data=hull18,aes(x=A1,y=A2),alpha=0.08, fill='red',colour="red" )
+  geom_polygon(data=hull18,aes(x=A1,y=A2),alpha=0.08, fill='#F8766D',colour='#F8766D' )
+pca_plot_col
 
-pca_old<- pca_plot_col<- ppp+
+pca_old<- ppp+
   geom_polygon(data=glob_hull,aes(x=A1,y=A2),fill=NA,colour="grey70")+
   geom_point(data=pc2.dfs[! pc2.dfs$yearcount== 'new',], aes(x=A1, y=A2, col=yearcount))+
-  scale_colour_manual(values=c('grey', 'red'))+
-  geom_polygon(data=old_hull,aes(x=A1,y=A2),alpha=0.08, fill='red',colour="red")+
+  scale_colour_manual(values=c('grey','#F8766D' ))+
+  geom_polygon(data=old_hull,aes(x=A1,y=A2),alpha=0.08, fill='#F8766D',colour='#F8766D')+
   theme_bw()
 
 pca_old
 
-pca_new<- pca_plot_col<- ppp+
+pca_new<-  ppp+
   geom_polygon(data=glob_hull,aes(x=A1,y=A2),fill=NA,colour="grey70")+
   geom_point(data=pc2.dfs[! pc2.dfs$yearcount== 'old',], aes(x=A1, y=A2, col=yearcount))+
-  scale_colour_manual(values=c('grey', 'blue'))+
-  geom_polygon(data=hull18,aes(x=A1,y=A2),alpha=0.08, fill='blue',colour="blue" )+
+  scale_colour_manual(values=c('grey','#00BFC4' ))+
+  geom_polygon(data=hull18,aes(x=A1,y=A2),alpha=0.08, fill='#00BFC4',colour='#00BFC4' )+
   theme_bw()
 pca_new
+
+
+#colors_to_use[colors_to_use=='old']<- '#F8766D'
+
+#colors_to_use[colors_to_use=='both']<-'grey'
+
+#colors_to_use[colors_to_use=='new']<-'#00BFC4'
+
 
 pca_old+ geom_text_repel(data = pc2.dfs[! pc2.dfs$yearcount== 'new',], aes(x=A1, y=A2, label=Species), size = 3, segment.size = 0.1)
 
@@ -1172,7 +1192,7 @@ shallow_sp<- traits_final[c(which(traits_final$DRange<=10)),]
 #check min and max depth with main trait db
 shal<-which(traits$Species %in% shallow_sp$species)
 
-traits_shallow<- traits[shal,] #ok they're all super shallow species
+traits_shallow<- traits[shal,] #ok they're all super shallow species  #checking the actual max depth not depth range
 
 
 shallow_sp<-shallow_sp[,c(8,9,10)]
@@ -1508,7 +1528,7 @@ pca_new_lab<- pca_new+ geom_text_repel(data = pco2_coral.df[! pco2_coral.df$year
 
 pca_new_lab
 
-#now do plot by depth 
+#now do plot by depth ----
 depth<- read.csv('coral_depth_year_abun.csv')
 depth$Genus<-as.character(depth$Genus)
 
@@ -1603,3 +1623,642 @@ pca_new_depth
 grid.arrange(pca_old_depth, pca_new_depth, nrow=1, ncol=2) #ok just need to figure out why some are missing
 
 #ellen needs to email me?
+
+#now read in complete long coral data ----
+
+#read in long form data with abundance 
+#now read in complete long coral data
+coral_long_18<-read.csv('coral_long_2018.csv')
+
+coral_long_76<- read.csv('coral_long_unclean_76.csv')
+
+torm<-which(coral_long_76$Abundance=='')
+
+coral_long_76<-coral_long_76[-c(torm),]
+
+coral_long_76<-coral_long_76[,-5]
+
+#make numeric
+coral_long_76$Abundance<-as.numeric(coral_long_76$Abundance)
+
+#check factor levels
+levels(coral_long_76$Genus)   #loads of whitespace, make character, remove whitespace then refactorise
+
+coral_long_76$Genus<-as.character(coral_long_76$Genus)
+
+coral_long_76$Genus<- trimws(coral_long_76$Genus)
+
+coral_long_76$Genus[coral_long_76$Genus=='Porites']<-"Porites"
+coral_long_76$Genus[coral_long_76$Genus== "Porites lutea"]<-"Porites"
+coral_long_76$Genus[coral_long_76$Genus== "Seriatpora" ]<-"Seriatopora"
+
+coral_long_76$Genus[coral_long_76$Genus== "Favia" ]<-'Dipsastraea'
+coral_long_76$Genus[coral_long_76$Genus== "Favea" ]<-'Dipsastraea'
+
+
+coral_long_76$Genus<-as.factor(coral_long_76$Genus)
+
+levels(coral_long_76$Genus)
+
+#check for 18 data
+levels(coral_long_18$Species)
+
+coral_long_18$Species<-as.character(coral_long_18$Species)
+
+coral_long_18$Species[coral_long_18$Species=="Porites " ]<-"Porites"
+
+coral_long_18$Species[coral_long_18$Species=="Pssamocora" ]<- "Psammocora" 
+
+coral_long_18$Species[coral_long_18$Species=="Turbinaria irregularis"]<- "Turbinaria"
+
+coral_long_18$Species[coral_long_18$Species=="Favia"  ]<-'Dipsastraea'
+
+coral_long_18$Species[coral_long_18$Species== "Seriatpora"  ]<-"Seriatopora" 
+
+coral_long_18$Species[coral_long_18$Species== 'Montastrea']<-'Astrea' 
+
+coral_long_18$Species<-as.factor(coral_long_18$Species)
+
+levels(coral_long_18$Species)
+
+coral_long_76$year<-1976
+
+coral_long_18$year<-2018
+
+#check names before merge
+names(coral_long_76)
+
+names(coral_long_18)
+
+#merge together
+#for 2018 get site average across quadrats 
+coral_long_18_sum<- coral_long_18 %>% group_by(Quadrat.Depth, Species, site) %>% 
+  summarise(Abundance=mean(Colony.Number),health=mean(Colony.Health))
+
+names(coral_long_18_sum)
+
+names(coral_long_76)<- c("Site" ,     "Year"  ,    "Genus"   ,  "Abundance" ,"depth" ,"health"   , "year"  )
+
+names(coral_long_18_sum)<-c("depth" , "Genus" ,      "Site"   , 'Abundance',         "health")      
+
+coral_long_18_sum$Year<-2018
+
+coral_long_18_sum<- coral_long_18_sum[, c(3,6,2,4,1,5)]
+
+names(coral_long_76)
+
+names(coral_long_18_sum)
+
+coral_long_76<-coral_long_76[,-7]
+
+coral_long_76$Genus<-as.character(coral_long_76$Genus)
+
+coral_long_18_sum$Genus<-as.character(coral_long_18_sum$Genus)
+
+coral<- rbind(coral_long_76, coral_long_18_sum)
+
+unique(coral$Genus)
+
+#ok now load in trait db to check if they match, and if they dont figure out if the genera have changed
+coral_traits<-read.csv('coralDB_2705_withrange.csv')
+
+#compare
+not_in<-which(! unique(coral$Genus) %in% coral_traits$genus)
+
+survey_genera<- unique(coral$Genus)
+
+unique(coral$Genus)[not_in]
+
+#remove genera not in trait database or check for changes
+torm<-which(coral$Genus=="Millepora")
+coral<-coral[-c(torm),]
+
+coral$Genus[coral$Genus=="Porities"]<- "Porites"
+
+which(coral$Genus=="Cantharellus")
+
+coral$Genus[coral$Genus=="Cantharellus"]<-'Fungiidae_family'
+
+coral$Genus[coral$Genus=="Pleuractis" ]<-'Fungiidae_family'
+
+coral$Genus[coral$Genus=="Herpolitha"  ]<-'Fungiidae_family'
+
+torm<-which(coral$Genus=='Oculinidae') #family so remove
+
+coral<-coral[-c(torm),]
+
+torm<- which(coral$Genus=='Faviidae') #family so remove
+
+coral<-coral[-c(torm),]
+
+torm<- which(coral$Genus=="Heliopora")
+
+coral<-coral[-c(torm),]
+
+coral$Genus[coral$Genus== "Lobactis"  ]<-'Fungiidae_family'
+
+coral$Genus[coral$Genus=="Hydnopora"]<-"Hydnophora" 
+
+coral$Genus[coral$Genus== "Fungiidae" ]<-'Fungiidae_family'
+
+coral$Genus[coral$Genus=="Pachyseries"  ]<-'Pachyseris'
+
+coral$Genus[coral$Genus== "Ctenactis"  ]<-'Fungiidae_family'
+
+coral$Genus[coral$Genus== "Polyphyllia"   ]<-'Fungiidae_family'
+
+torm<- which(coral$Genus=="Caryophylliidae")
+
+coral<-coral[-c(torm),]
+
+not_in<-which(! unique(coral$Genus) %in% coral_traits$genus)
+
+
+#already combined coral traits in excel so the growth forms are combined in groups at the bottom 
+
+#ok now genus richness for site
+
+
+#plot bar plot 
+coral_site_genus<- coral[,c(1,2,3)]
+
+coral_site_genus<-distinct(coral_site_genus)
+
+coral_site_genus$abundance<-1
+
+rich_coral<- coral_site_genus %>% group_by(Site, Year) %>% summarise(richness=sum(abundance))
+
+rich_coral$Site<-as.factor(rich_coral$Site)
+rich_coral$Year<-as.factor(rich_coral$Year)
+
+
+coral_div_bar<-ggplot(rich_coral, aes(x=Site, y=richness, fill=Year))+
+  geom_bar(stat='identity',position=position_dodge())+theme_bw()
+
+coral_div_bar
+
+#now pca----
+coral2<-unite(coral, c('Site','Year'), col='site_year', remove=FALSE)
+
+coral2<-coral2[,c(1,4,5)]
+
+coral2<- coral2 %>% group_by(site_year, Genus) %>% summarise(Abundance=sum(Abundance))
+
+#ok now make wide
+coral_matrix<- acast(coral2, site_year~Genus)
+
+coral_matrix[is.na(coral_matrix)]<-0
+
+
+#ok now pca
+pc_coral<-rda(coral_matrix)
+
+
+plot(pc_coral)
+
+coral_psum<-summary(pc_coral)
+
+#get the values for PC1 and PC2
+site_scores_c<- data.frame(coral_psum$sites[,1:2]) #PC2 and 2
+sp_scores_c<-data.frame(coral_psum$species[,1:2])  #loadings
+
+#label sites with year and site split
+split_c<- str_split(rownames(site_scores_c), '_', n=2)
+
+split_c[[1]]
+
+split_df_c<-do.call(rbind.data.frame, split_c)
+
+site_name_year_coral<-data.frame(site_year=rownames(site_scores_c), sites=split_df_c[,1], year=split_df_c[,2])
+
+site_scores_c$site<-split_df_c[,1]
+site_scores_c$year<-split_df_c[,2]
+
+#ok now plot with ggplot
+coral_pca_plot<-ggplot(site_scores_c, aes(x=PC1, y=PC2, col=year))+
+  geom_text( aes(label=site), position = position_jitter(width = 1, height=1) )
+
+coral_pca_plot
+
+#now add convex hulls
+## Create subsetted convex hull
+
+
+pc_coral
+
+
+pc_c_76<- site_scores_c[site_scores_c$year=='1976',]
+pc_c_18<-site_scores_c[site_scores_c$year=='2018',]
+
+which(site_scores_c$year=='1976')
+
+glob_hull_coral<-site_scores_c[chull(site_scores_c$PC1, site_scores_c$PC2),]
+hull76_c <- pc_c_76[chull(pc_c_76$PC1, pc_c_76$PC2),]
+hull18_c <- pc_c_18[chull(pc_c_18$PC1, pc_c_18$PC2),]
+
+#get ggplot cols
+ggplotColours <- function(n = 6, h = c(0, 360) + 15){
+  if ((diff(h) %% 360) < 1) h[2] <- h[2] - 360/n
+  hcl(h = (seq(h[1], h[2], length = n)), c = 100, l = 65)
+}
+ggplotColours(n=2)
+
+
+
+#set up the overall plot? maybe this is whats wrong
+
+# code to setup ggplot enviroment
+ppp <- ggplot() + coord_fixed() +
+  labs(x="PC1", y="PC2") +
+  geom_hline(yintercept=0, col="darkgrey") +
+  geom_vline(xintercept=0, col="darkgrey")
+
+
+
+coral_pca_plot<-ppp+ #geom_polygon(data=glob_hull_coral,aes(x=PC1,y=PC2),fill=NA,colour="grey70")+
+  geom_polygon(data=hull76_c, aes(x=PC1, y=PC2), fill=NA, col='#F8766D')+
+  #geom_point(data=site_scores_c, aes(x=PC1, y=PC2))+
+  geom_text( data=site_scores_c, aes(x=PC1, y=PC2, col=year, label=site),size=4)+ #position = position_jitter(width = 1, height=1) 
+  geom_polygon(data=hull18_c, aes(x=PC1, y=PC2), fill=NA, col='#00BFC4')+
+  theme_bw()
+
+coral_pca_plot  ####this is with abundance, can also do with pres/abs 
+
+
+
+#ok now panel richness into the pca plot
+coral_div_bar
+
+#inset 
+grid.newpage()
+vpb_ <- viewport(width = 1, height = 1, x = 0.5, y = 0.5)  # the larger map
+vpa_ <- viewport(width = 0.3, height = 0.3, x = 0.3, y = 0.8)  # the inset in upper right
+print(coral_pca_plot, vp = vpb_)
+print(coral_div_bar, vp = vpa_)
+
+#ok now do without abundance
+#now pca----
+
+coral3<-coral2
+
+coral3$Abundance<-1
+
+#ok now make wide
+coral_matrix<- acast(coral3, site_year~Genus)
+
+coral_matrix[is.na(coral_matrix)]<-0
+
+#ok now pca
+pc_coral<-rda(coral_matrix)
+
+
+plot(pc_coral)
+
+coral_psum<-summary(pc_coral)
+
+#get the values for PC1 and PC2
+site_scores_c<- data.frame(coral_psum$sites[,1:2]) #PC2 and 2
+sp_scores_c<-data.frame(coral_psum$species[,1:2])  #loadings
+
+#label sites with year and site split
+split_c<- str_split(rownames(site_scores_c), '_', n=2)
+
+split_c[[1]]
+
+split_df_c<-do.call(rbind.data.frame, split_c)
+
+site_name_year_coral<-data.frame(site_year=rownames(site_scores_c), sites=split_df_c[,1], year=split_df_c[,2])
+
+site_scores_c$site<-split_df_c[,1]
+site_scores_c$year<-split_df_c[,2]
+
+#ok now plot with ggplot
+coral_pca_plot<-ggplot(site_scores_c, aes(x=PC1, y=PC2, col=year))+
+  geom_text( aes(label=site), position = position_jitter(width = 1, height=1) )
+
+coral_pca_plot
+
+#now add convex hulls
+## Create subsetted convex hull
+
+
+pc_coral
+
+
+pc_c_76<- site_scores_c[site_scores_c$year=='1976',]
+pc_c_18<-site_scores_c[site_scores_c$year=='2018',]
+
+which(site_scores_c$year=='1976')
+
+glob_hull_coral<-site_scores_c[chull(site_scores_c$PC1, site_scores_c$PC2),]
+hull76_c <- pc_c_76[chull(pc_c_76$PC1, pc_c_76$PC2),]
+hull18_c <- pc_c_18[chull(pc_c_18$PC1, pc_c_18$PC2),]
+
+#get ggplot cols
+ggplotColours <- function(n = 6, h = c(0, 360) + 15){
+  if ((diff(h) %% 360) < 1) h[2] <- h[2] - 360/n
+  hcl(h = (seq(h[1], h[2], length = n)), c = 100, l = 65)
+}
+ggplotColours(n=2)
+
+
+
+#set up the overall plot? maybe this is whats wrong
+
+# code to setup ggplot enviroment
+ppp <- ggplot() + coord_fixed() +
+  labs(x="PC1", y="PC2") +
+  geom_hline(yintercept=0, col="darkgrey") +
+  geom_vline(xintercept=0, col="darkgrey")
+
+
+
+coral_pca_plot<-ppp+ #geom_polygon(data=glob_hull_coral,aes(x=PC1,y=PC2),fill=NA,colour="grey70")+
+  geom_polygon(data=hull76_c, aes(x=PC1, y=PC2), fill=NA, col='#F8766D')+
+  #geom_point(data=site_scores_c, aes(x=PC1, y=PC2))+
+  geom_text( data=site_scores_c, aes(x=PC1, y=PC2, col=year, label=site),size=4)+ #position = position_jitter(width = 1, height=1) 
+  geom_polygon(data=hull18_c, aes(x=PC1, y=PC2), fill=NA, col='#00BFC4')+
+  theme_bw()
+
+coral_pca_plot  ####this is with pres/abs 
+
+
+
+
+
+
+
+
+#ok now trait pca
+
+#sort out coral traits
+#ok now clean up to traits
+unique(coral_traits$Coloniality)
+unique(coral_traits$Growth.form.typical)
+
+coral_traits$Growth.form.typical[coral_traits$Growth.form.typical=='digitate']<-'branching'
+coral_traits$Growth.form.typical[coral_traits$Growth.form.typical=='branching_closed']<-'branching'
+
+coral_traits$Growth.form.typical<-as.factor(coral_traits$Growth.form.typical)
+levels(coral_traits$Growth.form.typical)
+unique(coral_traits$Growth.form.typical)
+
+unique(coral_traits$Water.clarity.preference)
+unique(coral_traits$Wave.exposure.preference)
+
+unique(coral_traits$Sexual_system)
+unique(coral_traits$larval_development)
+
+#now just get traits you want 
+coral_traits<-coral_traits[,c(2,3,4,5,7,8,9,11,12,13,15)]
+
+#ok now need to sort out the survey data into years 
+coral_year<- coral %>% group_by(Genus, Year) %>% summarise(abundance=(sum(Abundance)))
+
+
+
+coral_year_con<- coral_year %>% group_by(Genus) %>% summarise (yearcount=mean(Year))
+
+coral_year_con$yearcount<- as.character(coral_year_con$yearcount)
+
+coral_year_con$yearcount[coral_year_con$yearcount==((2018+1976)/2)]<-'both'
+
+
+#ok now left join with traits
+coral_year_con<-coral_year_con %>% rename(genus=Genus)
+
+coral_year_traits<-left_join(coral_traits, coral_year_con, by='genus')
+
+#filter for only the survey traits
+coral_year_traits<- coral_year_traits[c(which(coral_year_traits$genus %in% coral_year_con$genus)),]
+
+rownames(coral_year_traits)<- coral_year_traits$genus
+
+
+coral_traits<-coral_traits[c(coral_traits$genus %in% coral_year_con$genus),]
+
+#ok now pcoa
+rownames(coral_traits)<-coral_traits$genus
+coral_traits<-coral_traits[,-1]
+
+coral_gow<-gowdis(coral_traits)
+
+coral_gow<-cailliez(coral_gow)
+
+coral_pcoa<-dudi.pco(d=coral_gow, scannf = FALSE, nf = 4)
+
+pco2_coral.df<- data.frame(coral_pcoa$li, coral_year_traits) # combine PCoA axes with trait/site data
+
+#make global hull
+glob_hull_coral<-pco2_coral.df[chull(pco2_coral.df$A1, pco2_coral.df$A2),]
+
+# code to setup ggplot enviroment
+ppp <- ggplot() + coord_fixed() +
+  labs(x="Comp1, Axis1", y="Comp2, Axis2") +
+  geom_hline(yintercept=0, col="darkgrey") +
+  geom_vline(xintercept=0, col="darkgrey")
+
+# plot global hull
+ppp+
+  geom_polygon(data=glob_hull_coral,aes(x=A1,y=A2),fill=NA,colour="grey70")+
+  geom_point(data=pco2_coral.df, aes(x=A1, y=A2), colour='grey70')+theme_bw()
+
+
+# subset for 76, 18,19  data
+pco_coral_old<-pco2_coral.df[! pco2_coral.df$yearcount == '2018',]
+pco_coral_new<-pco2_coral.df[! pco2_coral.df$yearcount == '1976',]
+
+
+# make regional hull
+old_coral_hull<-pco_coral_old[chull(pco_coral_old$A1, pco_coral_old$A2),]
+new_coral_hull<-pco_coral_new[chull(pco_coral_new$A1, pco_coral_new$A2),]
+
+# plot regional trait space and hull inside global
+
+pca_old<- ppp+
+  geom_polygon(data=glob_hull_coral,aes(x=A1,y=A2),fill=NA,colour="grey70")+
+  geom_point(data=pco2_coral.df[! pco2_coral.df$yearcount== '2018',], aes(x=A1, y=A2, col=yearcount))+
+  scale_colour_manual(values=c('salmon', 'grey'))+
+  geom_polygon(data=old_coral_hull,aes(x=A1,y=A2),alpha=0.08, fill='salmon',colour="salmon")+
+  theme_bw()
+
+pca_old
+
+pca_new<- ppp+
+  geom_polygon(data=glob_hull_coral,aes(x=A1,y=A2),fill=NA,colour="grey70")+
+  geom_point(data=pco2_coral.df[! pco2_coral.df$yearcount== '1976',], aes(x=A1, y=A2, col=yearcount))+
+  scale_colour_manual(values=c( '#00BFC4', 'grey'))+
+  geom_polygon(data=new_coral_hull,aes(x=A1,y=A2),alpha=0.08, fill='#00BFC4',colour='#00BFC4' )+
+  theme_bw()
+pca_new
+
+
+pca_old_lab<- pca_old+ geom_text_repel(data = pco2_coral.df[! pco2_coral.df$yearcount== '2018',], aes(x=A1, y=A2, label=genus), size = 3, segment.size = 0.1)
+pca_old_lab
+
+pca_new_lab<- pca_new+ geom_text_repel(data = pco2_coral.df[! pco2_coral.df$yearcount== '1976',], aes(x=A1, y=A2, label=genus), size = 3, segment.size = 0.1)
+
+pca_new_lab
+
+
+#now do plot by depth 
+#get the average depth and abundance of genera between the two years
+#ok can now work out the average depths for the corals: 
+names(coral_long_76)
+
+names(coral_long_18_sum)
+
+
+#merge these 
+#this is 'coral'
+
+#ok now on coral data add a column
+coral$depthabun<-coral$Abundance*coral$depth
+
+coral$Year<-as.factor(coral$Year)
+
+av_depth_all<- coral %>% group_by(Genus, Year) %>% summarise(av_depth=(sum(depthabun))/ sum(Abundance), abundance=sum(Abundance))
+
+
+av_depth_all$Genus<-as.factor(av_depth_all$Genus)
+av_depth_all$Year<-as.character(av_depth_all$Year)
+av_depth_all$Year<-as.numeric(av_depth_all$Year)
+
+#make plot of depths
+ggplot(av_depth_all, aes(x=Year, y=av_depth, col=Genus))+
+  geom_point()+
+  geom_line()+theme_bw()
+
+
+
+#ok 
+#now decide what categories to make deep medium shallow?
+depth_70<-filter(av_depth_all, Year==1976)
+hist(depth_70$av_depth)
+
+range(depth_70$av_depth) #1.5-12m 0-4, 4-8, 8-12?
+
+av_depth_all$cat<- av_depth_all$av_depth
+
+av_depth_all$cat[av_depth_all$cat > 0 & av_depth_all$cat < 5]<- 'shallow'
+av_depth_all$cat[av_depth_all$cat >=  5 & av_depth_all$cat < 8]<- 'medium'
+av_depth_all$cat[! av_depth_all$cat == 'shallow' & ! av_depth_all$cat =='medium']<- 'deep'
+
+length(which(av_depth_all$cat=='shallow')) #16
+length(which(av_depth_all$cat=='medium')) #34
+length(which(av_depth_all$cat=='deep')) #27
+
+av_depth_all$Year<-as.integer(av_depth_all$Year)
+
+#ggplot the depths
+depth_com_plot<-ggplot(av_depth_all, aes(x=Year, y=av_depth, col=Genus))+
+  geom_line()+
+  geom_point(aes(size=abundance))+
+  theme_bw()
+
+depth_com_plot
+
+#ok now add new depth data to coral plot
+
+
+pco2_coral.df
+#ok two panel pca plot 1975 and 2018 colour by deep, med or shallow, can see which corals change and change in abundance
+
+#add depth data to pca 
+
+
+av_depth_all$Genus<-as.character(av_depth_all$Genus)
+
+av_depth_all<- av_depth_all %>% rename(genus=Genus)
+
+#need to make 70s depth pca and a 2018 one
+pco2_70<-pco2_coral.df
+pco2_18<-pco2_coral.df
+
+depth_70<- av_depth_all %>% filter(Year=='1976')
+depth_18<- av_depth_all %>% filter(Year=='2018')
+
+pco2_70 <- left_join(pco2_70, depth_70, by='genus')
+pco2_18<- left_join(pco2_18, depth_18, by='genus')
+
+pco2_70[which(is.na(pco2_70$av_depth)),]
+pco2_18[which(is.na(pco2_18$av_depth)),]
+
+pco2_70<- pco2_70 %>% filter(! yearcount=='2018')
+pco2_18<-pco2_18 %>% filter(! yearcount=='1975')
+
+library(ggrepel)
+
+pca_old_depth<- ppp+
+  geom_polygon(data=glob_hull_coral,aes(x=A1,y=A2),fill=NA,colour="grey70")+
+  geom_point(data=pco2_70, aes(x=A1, y=A2, col=cat, size=abundance))+
+  geom_text_repel( data=pco2_70, aes(x=A1, y=A2, label=genus),size=4)+
+  theme_bw()
+
+pca_old_depth
+
+pca_new_depth<- ppp+
+  geom_polygon(data=glob_hull_coral,aes(x=A1,y=A2),fill=NA,colour="grey70")+
+  geom_point(data=pco2_18, aes(x=A1, y=A2, col=cat, size=abundance))+
+  geom_text_repel( data=pco2_18, aes(x=A1, y=A2, label=genus),size=4)+
+  theme_bw()
+pca_new_depth
+
+
+grid.arrange(pca_old_depth, pca_new_depth, nrow=1, ncol=2) #ok just need to figure out why some are missing
+
+#ok get the relative abundance of each group 
+rel_abun76<- coral_long_76
+rel_abun76$total<- sum(rel_abun76$Abundance)
+
+rel_abun76<- rel_abun76 %>% group_by(Genus) %>% summarise(rel_abun=(sum(Abundance, na.rm= TRUE)))
+rel_abun76$rel_abun<- rel_abun76$rel_abun/(sum(rel_abun76$rel_abun))
+
+
+rel_abun18<-coral_long_18
+rel_abun18$Species<- as.character(rel_abun18$Species)
+
+rel_abun18<- rel_abun18 %>% group_by(Species) %>% summarise(rel_abun=(sum(Colony.Number, na.rm = TRUE)))
+rel_abun18$rel_abun<- rel_abun18$rel_abun/(sum(rel_abun18$rel_abun))
+
+names(rel_abun18)<-c( "Genus"  ,  "rel_abun")
+names(rel_abun76)
+
+rel_abun18$year<- 2018
+rel_abun76$year<-1976
+
+
+rel_abun<-rbind(rel_abun18, rel_abun76)
+
+ggplot(rel_abun, aes(x=year, y=rel_abun, col=Genus))+
+  geom_point()+
+  geom_line()+
+  theme_bw()
+
+growth_form<- coral_traits[,c(1,3)]
+
+growth_form$Genus<- rownames(growth_form)
+
+growth_form<-growth_form[,-1]
+
+rel_abun$Genus<-as.character(rel_abun$Genus)
+
+rel_abun<- left_join(rel_abun, growth_form, by='Genus')
+
+#
+
+rel_abun$Genus<-as.character(rel_abun$Genus)
+
+ggplot(rel_abun, aes(x=year, y=rel_abun, group=Genus, col=Growth.form.typical))+
+  geom_point()+
+  geom_line()
+
+#add the growth forms 
+growth_abun<- rel_abun %>% group_by(year,Growth.form.typical) %>% summarise (rel_abun=sum(rel_abun))
+
+
+ggplot(growth_abun, aes(x=year, y=rel_abun, group=Growth.form.typical, col=Growth.form.typical))+
+  geom_point()+
+  geom_line()
+
+
