@@ -1451,7 +1451,19 @@ both_sites_70$occ<- as.numeric(both_sites_70$occ)
 
 both_sites_70$SGI[both_sites_70$occ < 70] <- NA
 
+#number of sp in this analyses
+no18<- both_sites_18[,c(7,8)]
+no70<- both_sites_70[,c(7,8)]
 
+no<-rbind(no18, no70)
+
+no.sp<- unique(no$Species) #306
+
+torm<-which(is.na(no$occ)) 
+
+no<- no[-c(torm),]
+
+no.sp_SGI<- unique(no$Species) #242
 
 #site gen mean
 site_gen_mean_70<- both_sites_70 %>% group_by(site) %>% summarise ( mean_gen= mean(SGI, na.rm = TRUE))
@@ -1466,6 +1478,32 @@ site_gen_mean<- bind_rows(site_gen_mean_70, site_gen_mean_18)
 ggplot(site_gen_mean, aes(x=year, y=mean_gen, col=site))+
   geom_point()+
   geom_line( method='lm')
+
+site_gen_mean$year<-as.factor(site_gen_mean$year)
+
+gen_plot<- ggplot(site_gen_mean, aes(x=site, y=mean_gen, fill=year))+
+  geom_bar(stat='identity', position=position_dodge())+
+  labs(x='Site', y='Community Generalisation Index')+
+  theme_bw()+
+  theme(axis.text=element_text(size=13))+
+  theme(axis.title=element_text(size=20))
+  
+gen_plot
+
+
+
+cc_plot<-ggplot(cover_edit, aes(x=Site, y=coral_cov, fill=year))+
+  geom_bar(stat='identity',position=position_dodge())+
+  labs(x='Site', y='Coral Coverage (%)')+
+  theme_bw()
+
+cc_plot<-cc_plot+ theme(axis.text=element_text(size=13))
+cc_plot<-cc_plot+theme(axis.title=element_text(size=20))
+
+cc_plot
+
+
+
 
 names(site_gen_mean_18)<- c( "site"  ,   "mean_gen18",  "year") 
 names(site_gen_mean_70)<- c("site"  ,   "mean_gen75", "year")
@@ -1510,7 +1548,7 @@ ggplot(change_PCA, aes(x=changePC2, y=change, col=site))+
 hist(site_gen_mean_18$mean_gen18)
 hist(site_gen_mean_70$mean_gen75)
 
-t.test(site_gen_mean_70$mean_gen75, site_gen_mean_18$mean_gen18)
+t.test(site_gen_mean_70$mean_gen75, site_gen_mean_18$mean_gen18, paired = TRUE)
 
 #########################################################
 ###############ok make coral figure!#####################----
