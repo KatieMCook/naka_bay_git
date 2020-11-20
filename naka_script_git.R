@@ -345,7 +345,7 @@ old_new$year<-as.factor(old_new$year)
 rich<- old_new %>% group_by(site, year) %>% summarise (richness=sum(abun))
 
 torm<-which(is.na(rich$site))
-rich<- rich[-torm, ]
+#rich<- rich[-torm, ]
 
 ggplot(rich, aes(x=site, y=richness, col=year))+
   geom_point()
@@ -385,11 +385,31 @@ rich_plot<- ggplot(rich_18, aes(x=site, y=richness, fill=year))+
   theme(axis.text=element_text(size=13))+
   theme(axis.title=element_text(size=20))
 
- 
-
-
-
 rich_plot
+
+rich_18$site<-as.character(rich_18$site)
+rich_18$site<-as.integer(rich_18$site)
+#plot by distance from shore 
+shore_dis<- read.csv('site_dis_gps.csv')
+shore_dis<- shore_dis[,c(2,7)]
+
+names(shore_dis)<-c('site', 'site_dis')
+
+rich_18<-left_join(rich_18, shore_dis, by='site')
+
+rich_18$site_dis<-as.factor(rich_18$site_dis)
+
+rich_plot2<- ggplot(rich_18, aes(x=site_dis, y=richness, fill=year))+
+  geom_bar(stat='identity',position=position_dodge())+
+  theme_bw()+
+  labs(x='Site', y='Species Richness')+
+  theme(axis.text=element_text(size=13))+
+  theme(axis.title=element_text(size=20))
+
+
+rich_plot2
+#ok now plot the site names by the distance from shore 
+rich_18
 
 #normal
 shapiro.test(rich_18$richness)
@@ -598,10 +618,15 @@ site_name_year18<- site_name_year18[-c(torm),]
 #check site name year matches what goes into pca
 identical (site_name_year18$site_year, rownames(site_matrix_182)) #yes
 
+#rename the sites as the distance sites 
 
 #ok now we can plot with ggplot
 site_scores18$site<- site_name_year18$site
 site_scores18$year<-site_name_year18$year
+
+shore_dis$site<-as.character(shore_dis$site)
+
+site_scores18<- left_join(site_scores18, shore_dis, by='site')
 
 
 rda.plot18<- ggplot(site_scores18, aes(x=PC1, y=PC2, col=year))+
@@ -631,8 +656,12 @@ theme_bw()
 
 rda.plot18
 
+library(ggrepel)
+
+
+
 rda.plot18<-rda.plot18 + 
-  geom_text_repel(aes(label=site), size=5, col='black')+
+  geom_text_repel(aes(label=site_dis), size=5, col='black')+
   labs(x= 'PC1 (13%)', y='PC2 (9%)')+
   theme(axis.text=element_text(size=13))
   
@@ -640,7 +669,10 @@ rda.plot18<-rda.plot18+theme(axis.title=element_text(size=20))
 
 
 
+
 rda.plot18
+
+#come back here---- 
 
 ###ok now run adonis to say the years are significantly different 
 #sort out site name year for adonis
@@ -664,6 +696,17 @@ s1<- with(site_year_ad, simper(site_matrix_182, year))
 summary(s1)
 
 
+
+#export 
+dput(s1, file = "sim.txt")
+sim2 <- dget("sim.txt")
+
+fish_sim_sum<-summary(sim2)
+fish_sim_sum<- fish_sim_sum$'1976_2018'
+fish_sim_sum<- data.frame(fish_sim_sum)
+
+
+write.csv(fish_sim_sum, 'fish_simper_ouput.csv')
 #COME BACK AND ADD GGPLOT COLS----
 
   
@@ -1176,7 +1219,9 @@ ppp <- ggplot() + coord_fixed() +
 # plot global hull
 ppp+
   geom_polygon(data=glob_hull,aes(x=A1,y=A2),fill=NA,colour="grey70")+
-  geom_point(data=pc2.dfs, aes(x=A1, y=A2), colour='grey70')+theme_bw()
+  geom_point(data=pc2.dfs, aes(x=A1, y=A2), colour='grey50')+theme_bw()
+
+
 
 #subset for year data
 #make df with the years #using code from above 
@@ -1234,8 +1279,8 @@ pca_plot_col
 
 pca_old<- ppp+
   geom_polygon(data=glob_hull,aes(x=A1,y=A2),fill=NA,colour="grey70")+
-  geom_point(data=pc2.dfs[! pc2.dfs$yearcount== 'new',], aes(x=A1, y=A2, col=yearcount))+
-  scale_colour_manual(values=c('grey','#F8766D' ))+
+  geom_point(data=pc2.dfs[! pc2.dfs$yearcount== 'new',], aes(x=A1, y=A2, col=yearcount), size=2)+
+  scale_colour_manual(values=c('grey70','#F8766D' ))+
   geom_polygon(data=old_hull,aes(x=A1,y=A2),alpha=0.08, fill='#F8766D',colour='#F8766D')+
   theme_bw()+
   theme(axis.text=element_text(size=13))+
@@ -1246,14 +1291,39 @@ pca_old
 
 pca_new<-  ppp+
   geom_polygon(data=glob_hull,aes(x=A1,y=A2),fill=NA,colour="grey70")+
-  geom_point(data=pc2.dfs[! pc2.dfs$yearcount== 'old',], aes(x=A1, y=A2, col=yearcount))+
-  scale_colour_manual(values=c('grey','#00BFC4' ))+
+  geom_point(data=pc2.dfs[! pc2.dfs$yearcount== 'old',], aes(x=A1, y=A2, col=yearcount), size=2)+
+  scale_colour_manual(values=c('grey70','#00BFC4' ))+
   geom_polygon(data=hull18,aes(x=A1,y=A2),alpha=0.08, fill='#00BFC4',colour='#00BFC4' )+
   theme_bw()+
   theme(axis.text=element_text(size=13))+
   theme(axis.title=element_text(size=20))
 
-pca_ne
+pca_new
+
+#adding text 
+
+#pca_old+
+  #geom_text_repel(data = pc2.dfs, aes(x=A1, y=A2, label=Species), size = 2, segment.size = 0.1)
+
+#colors_to_use[colors_to_use=='old']<- '#F8766D'
+
+#colors_to_use[colors_to_use=='both']<-'grey'
+
+#colors_to_use[colors_to_use=='new']<-'#00BFC4'
+
+
+#pca_old+ geom_text_repel(data = pc2.dfs[! pc2.dfs$yearcount== 'new',], aes(x=A1, y=A2, label=Species), size = 3, segment.size = 0.1)
+
+pca_old+geom_text_repel(data=old_hull, aes(x=A1, y=A2, label=Species), size = 5, segment.size = 0.1 )
+
+#pca_new+geom_text_repel(data = pc2.dfs[! pc2.dfs$yearcount== 'old',], aes(x=A1, y=A2, label=Species), size = 3, segment.size = 0.1)
+
+pca_new+geom_text_repel(data = hull18, aes(x=A1, y=A2, label=Species), size = 5, segment.size = 0.1)
+
+
+#make two panel plot 
+grid.arrange(pca_old, pca_new, ncol = 2, nrow = 1)
+
 
 #for maria
 gen_pred<- pc2.dfs
@@ -1265,24 +1335,6 @@ gen_pred<-gen_pred[,c(5:12)]
 
 
 write.csv(gen_pred, 'gen_pred.csv') 
-
-pca_old+
-  geom_text_repel(data = pc2.dfs, aes(x=A1, y=A2, label=Species), size = 2, segment.size = 0.1)
-
-#colors_to_use[colors_to_use=='old']<- '#F8766D'
-
-#colors_to_use[colors_to_use=='both']<-'grey'
-
-#colors_to_use[colors_to_use=='new']<-'#00BFC4'
-
-
-pca_old+ geom_text_repel(data = pc2.dfs[! pc2.dfs$yearcount== 'new',], aes(x=A1, y=A2, label=Species), size = 3, segment.size = 0.1)
-
-pca_new+geom_text_repel(data = pc2.dfs[! pc2.dfs$yearcount== 'old',], aes(x=A1, y=A2, label=Species), size = 3, segment.size = 0.1)
-
-#make two panel plot 
-grid.arrange(pca_old, pca_new, ncol = 2, nrow = 1)
-
 
 ###now adonis and simper 
 traits_adonis<- traits_final[,c(1:8)]
@@ -1475,13 +1527,25 @@ site_gen_mean_18$year<- 2018
 
 site_gen_mean<- bind_rows(site_gen_mean_70, site_gen_mean_18)
 
-ggplot(site_gen_mean, aes(x=year, y=mean_gen, col=site))+
+ggplot(site_gen_mean, aes(x=year, y=mean_gen, fill=year))+
+  geom_violin()+
   geom_point()+
-  geom_line( method='lm')
+  labs(x='Year', y='Community Generalisation Index')+
+  theme_bw()+
+  theme(axis.text=element_text(size=30))+
+  theme(axis.title=element_text(size=30))
+
 
 site_gen_mean$year<-as.factor(site_gen_mean$year)
 
-gen_plot<- ggplot(site_gen_mean, aes(x=site, y=mean_gen, fill=year))+
+
+site_gen_mean$site<- as.character(site_gen_mean$site)
+
+site_gen_mean<- left_join(site_gen_mean, shore_dis, by='site')
+
+
+
+gen_plot<- ggplot(site_gen_mean, aes(x=site_dis, y=mean_gen, fill=year))+
   geom_bar(stat='identity', position=position_dodge())+
   labs(x='Site', y='Community Generalisation Index')+
   theme_bw()+
@@ -1490,7 +1554,7 @@ gen_plot<- ggplot(site_gen_mean, aes(x=site, y=mean_gen, fill=year))+
   
 gen_plot
 
-
+#coral cover plot ---- 
 
 cc_plot<-ggplot(cover_edit, aes(x=Site, y=coral_cov, fill=year))+
   geom_bar(stat='identity',position=position_dodge())+
@@ -1647,6 +1711,20 @@ coral_div_bar<-ggplot(rich_coral, aes(x=site, y=richness, fill=year))+
   theme(legend.position='none')
 
 coral_div_bar
+
+
+rich_coral$site<- as.character(rich_coral$site)
+
+rich_coral<-left_join(rich_coral, shore_dis, by='site')
+
+rich_coral$site_dis<- as.factor(rich_coral$site_dis)
+
+coral_div_bar<-ggplot(rich_coral, aes(x=site_dis, y=richness, fill=year))+
+  geom_bar(stat='identity',position=position_dodge())+theme_bw()+
+  theme(legend.position='none')
+
+coral_div_bar
+
 
 #test to see if the richness has changed stats
 library(car)
@@ -2152,7 +2230,20 @@ rich_coral$Site<-as.factor(rich_coral$Site)
 rich_coral$Year<-as.factor(rich_coral$Year)
 
 
-coral_div_bar<-ggplot(rich_coral, aes(x=Site, y=richness, fill=Year))+
+rich_coral$Site<-as.character(rich_coral$Site)
+
+names(shore_dis)<-(c('Site', 'site_dis'))  
+
+rich_coral<-left_join(rich_coral, shore_dis, by='Site')
+
+rich_coral$site_dis<-as.factor(rich_coral$site_dis)
+
+rich_coral[32,1]<- '5'
+rich_coral[32,2]<-as.factor(2018)
+rich_coral[32,3]<-1
+rich_coral[32,4]<-as.factor(3)
+
+coral_div_bar<-ggplot(rich_coral, aes(x=site_dis, y=richness, fill=Year))+
   geom_bar(stat='identity',position=position_dodge())+theme_bw()+
   labs(x='Site', y='Genera Richness')+
 theme(axis.text=element_text(size=13))+
@@ -2238,11 +2329,16 @@ ppp <- ggplot() + coord_fixed() +
   geom_vline(xintercept=0, col="darkgrey")
 
 
+#edit the names 
+names(shore_dis)<- c('site', 'site_dis')
+
+site_scores_c<-left_join(site_scores_c, shore_dis, by='site')
+
 
 coral_pca_plot<-ppp+ #geom_polygon(data=glob_hull_coral,aes(x=PC1,y=PC2),fill=NA,colour="grey70")+
   geom_polygon(data=hull76_c, aes(x=PC1, y=PC2), fill=NA, col='#F8766D')+
   #geom_point(data=site_scores_c, aes(x=PC1, y=PC2))+
-  geom_text( data=site_scores_c, aes(x=PC1, y=PC2, col=year, label=site),size=4)+ #position = position_jitter(width = 1, height=1) 
+  geom_text( data=site_scores_c, aes(x=PC1, y=PC2, col=year, label=site_dis),size=4)+ #position = position_jitter(width = 1, height=1) 
   geom_polygon(data=hull18_c, aes(x=PC1, y=PC2), fill=NA, col='#00BFC4')+
   theme_bw()
 
@@ -2319,6 +2415,8 @@ glob_hull_coral<-site_scores_c[chull(site_scores_c$PC1, site_scores_c$PC2),]
 hull76_c <- pc_c_76[chull(pc_c_76$PC1, pc_c_76$PC2),]
 hull18_c <- pc_c_18[chull(pc_c_18$PC1, pc_c_18$PC2),]
 
+site_scores_c<- left_join(site_scores_c, shore_dis, by='site')
+
 #get ggplot cols
 ggplotColours <- function(n = 6, h = c(0, 360) + 15){
   if ((diff(h) %% 360) < 1) h[2] <- h[2] - 360/n
@@ -2343,8 +2441,10 @@ coral_pca_plot<-ppp+ #geom_polygon(data=glob_hull_coral,aes(x=PC1,y=PC2),fill=NA
   geom_polygon(data=hull18_c, aes(x=PC1, y=PC2, alpha=0.03),fill='#00BFC4', col='#00BFC4' )+
   theme_bw()
 
+
+
 coral_pca_plot<- coral_pca_plot+
-  geom_text_repel(aes(label=site), size=5, col='black')+
+  geom_text_repel(aes(label=site_dis), size=5, col='black')+
   labs(x= 'PC1 (25%)', y='PC2 (12%)')+
   theme(axis.text=element_text(size=13))
 
@@ -2371,6 +2471,16 @@ s2<- with(site_scores_c, simper(coral_matrix, year))
 summary(s2)
 
 s2
+
+coral_sim_sum<- summary(s2)
+
+coral_sim_sum<-coral_sim_sum$'1976_2018'
+
+coral_sim_sum<-data.frame(coral_sim_sum)
+
+
+write.csv(coral_sim_sum, 'coral_simper_ouput.csv')
+
 
 #ok now trait pca
 
@@ -2460,7 +2570,7 @@ new_coral_hull<-pco_coral_new[chull(pco_coral_new$A1, pco_coral_new$A2),]
 
 pca_old<- ppp+
   geom_polygon(data=glob_hull_coral,aes(x=A1,y=A2),fill=NA,colour="grey70")+
-  geom_point(data=pco2_coral.df[! pco2_coral.df$yearcount== '2018',], aes(x=A1, y=A2, col=yearcount))+
+  geom_point(data=pco2_coral.df[! pco2_coral.df$yearcount== '2018',], aes(x=A1, y=A2, col=yearcount), size=2)+
   scale_colour_manual(values=c('salmon', 'grey'))+
   geom_polygon(data=old_coral_hull,aes(x=A1,y=A2),alpha=0.08, fill='salmon',colour="salmon")+
   theme_bw()
@@ -2471,7 +2581,7 @@ pca_old
 
 pca_new<- ppp+
   geom_polygon(data=glob_hull_coral,aes(x=A1,y=A2),fill=NA,colour="grey70")+
-  geom_point(data=pco2_coral.df[! pco2_coral.df$yearcount== '1976',], aes(x=A1, y=A2, col=yearcount))+
+  geom_point(data=pco2_coral.df[! pco2_coral.df$yearcount== '1976',], aes(x=A1, y=A2, col=yearcount), size=2)+
   scale_colour_manual(values=c( '#00BFC4', 'grey'))+
   geom_polygon(data=new_coral_hull,aes(x=A1,y=A2),alpha=0.08, fill='#00BFC4',colour='#00BFC4' )+
   theme_bw()
@@ -2481,10 +2591,13 @@ pca_new<- pca_new+theme(axis.text=element_text(size=13))+theme(axis.title=elemen
 pca_new
 
 
-pca_old_lab<- pca_old+ geom_text_repel(data = pco2_coral.df[! pco2_coral.df$yearcount== '2018',], aes(x=A1, y=A2, label=genus), size = 4, segment.size = 0.1)
+#pca_old_lab<- pca_old+ geom_text_repel(data = pco2_coral.df[! pco2_coral.df$yearcount== '2018',], aes(x=A1, y=A2, label=genus), size = 4, segment.size = 0.1)
+
+pca_old_lab<- pca_old+ geom_text_repel(data = old_coral_hull, aes(x=A1, y=A2, label=genus), size = 4, segment.size = 0.1)
 pca_old_lab
 
-pca_new_lab<- pca_new+ geom_text_repel(data = pco2_coral.df[! pco2_coral.df$yearcount== '1976',], aes(x=A1, y=A2, label=genus), size = 4, segment.size = 0.1)
+#pca_new_lab<- pca_new+ geom_text_repel(data = pco2_coral.df[! pco2_coral.df$yearcount== '1976',], aes(x=A1, y=A2, label=genus), size = 4, segment.size = 0.1)
+pca_new_lab<- pca_new+ geom_text_repel(data = new_coral_hull, aes(x=A1, y=A2, label=genus), size = 4, segment.size = 0.1)
 
 pca_new_lab
 
@@ -2676,7 +2789,14 @@ which(is.na(growth_abun$Growth.form.typical))
 
 growth_abun<- growth_abun[-c(6,12),]
 
+#col blind palette
+cbp1 <-  c( "#E69F00", "#CC79A7", "#56B4E9", "#009E73",
+            "#0072B2" )
+
+cbp1
+
 abun_plot<-ggplot(growth_abun, aes(x=year, y=rel_abun, group=Growth.form.typical, col=Growth.form.typical))+
+  scale_color_manual(values=c(cbp1))+
   geom_point(size=4)+
   geom_line(size=1.5)+
   scale_x_continuous(breaks=c(1975,2018))+
@@ -2688,11 +2808,15 @@ abun_plot+theme(axis.title=element_text(size=20))
 
 
 #ggplot the depths
+names(av_depth_all)<-c("Genus"   ,  "Year"     , "av_depth",  "abundance" ,"cat"    ,   "count"    
+                       )
+
 av_depth_all<- left_join(av_depth_all, growth_form, by='Genus')
 av_depth_all<-as.data.frame(av_depth_all) 
 
 
 depth_com_plot<-ggplot(av_depth_all, aes(x=Year, y=av_depth, group=Genus, col=Growth.form.typical ))+ #col=Growth.form.typical
+  scale_color_manual(values=c(cbp1))+
   geom_line(size=1)+
   geom_point(size=2)+
   labs(x='Year', y='Average Depth')+
@@ -2752,17 +2876,23 @@ cover_edit$year[c(17:32)]<-2018
 cover_edit$coral_cov<-cover_edit$X1975
 
 cover_edit$coral_cov[c(17:32)]<- cover_edit$X2018[c(1:16)]
-cover_edit<- cover_edit[,c(1,5,6)]
+cover_edit<- cover_edit[,c(1,6,7)]
 
-cover_edit$Site<-as.factor(cover_edit$Site)
+names(shore_dis)<-c('Site', 'site_dis')
+
+cover_edit$Site<-as.character(cover_edit$Site)
+
+cover_edit<-left_join(cover_edit, shore_dis, by='Site')
+
+cover_edit$site_dis<-as.factor(cover_edit$site_dis)
 cover_edit$year<- as.factor(cover_edit$year)
 
-cc_plot<-ggplot(cover_edit, aes(x=Site, y=coral_cov, fill=year))+
+cc_plot<-ggplot(cover_edit, aes(x=site_dis, y=coral_cov, fill=year))+
   geom_bar(stat='identity',position=position_dodge())+
   labs(x='Site', y='Coral Coverage (%)')+
   theme_bw()
 
-cc_plot<-cc_plot+ theme(axis.text=element_text(size=13))
-cc_plot<-cc_plot+theme(axis.title=element_text(size=20))
+cc_plot<-cc_plot+ theme(axis.text=element_text(size=30))
+cc_plot<-cc_plot+theme(axis.title=element_text(size=40))
 
 cc_plot
