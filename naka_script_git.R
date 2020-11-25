@@ -1606,8 +1606,12 @@ fish_areas[c(15:28),2]<- site_key[,4]
 
 fish_areas$year<-as.factor(fish_areas$year)
 
-ggplot(fish_areas, aes(x=year, y=area))+
-  geom_boxplot()
+ggplot(fish_areas, aes(x=year, y=area, fill=year))+
+  geom_boxplot()+
+  theme_bw()+
+  labs(x='Year', y='Convex Hull Area')+
+  theme(axis.text=element_text(size=20))+
+  theme(axis.title=element_text(size=30))
 
 t.test(site_key$volume75, site_key$volume18, paired = T)
 
@@ -3242,25 +3246,29 @@ for ( i in 1:length(c_old_hull_list)){
 }
 
 #now plot
-fish_areas<-data.frame(year='1975', area=1)
-fish_areas[c(1:14),1]<-1975
-fish_areas[c(15:28),1]<-2018
+coral_areas<-data.frame(year='1975', area=1)
+coral_areas[c(1:16),1]<-1975
+coral_areas[c(17:32),1]<-2018
 
-fish_areas[c(1:14),2]<- site_key[,3]
-fish_areas[c(15:28),2]<- site_key[,4]
+coral_areas[c(1:16),2]<- site_key_coral[,3]
+coral_areas[c(17:32),2]<- site_key_coral[,4]
 
-fish_areas$year<-as.factor(fish_areas$year)
+coral_areas$year<-as.factor(coral_areas$year)
 
-ggplot(fish_areas, aes(x=year, y=area))+
-  geom_boxplot()
+ggplot(coral_areas, aes(x=year, y=area, fill=year))+
+  geom_boxplot()+
+  theme_bw()+
+  labs(x='Year', y='Convex Hull Area')+
+  theme(axis.text=element_text(size=20))+
+  theme(axis.title=element_text(size=30))
 
-t.test(site_key$volume75, site_key$volume18, paired = T)
+#not normal 
+t.test(site_key_coral$volume75, site_key_coral$volume18, paired = T)
 
+hist(site_key_coral$volume75)
+hist(site_key_coral$volume18)
 
-
-
-
-
+shapiro.test(coral_areas$area) #NORMAL 
 
 #now do plot by depth ----
 #get the average depth and abundance of genera between the two years
