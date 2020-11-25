@@ -1325,7 +1325,393 @@ pca_new+geom_text_repel(data = hull18, aes(x=A1, y=A2, label=Species), size = 5,
 grid.arrange(pca_old, pca_new, ncol = 2, nrow = 1)
 
 
-#for maria
+###### OK NOW MAKE FISH PCOA FOR EACH SITE #########
+
+#rename site matrix with the new names 
+
+#ok now make wide
+old_new3<- old_new2
+
+torm<-which(old_new3$site==21)
+
+old_new3<- old_new3[-c(torm),]
+
+
+old_new3$site<-as.character(old_new3$site)
+
+names(shore_dis)<-(c('site','site_dis')) 
+
+old_new3<- left_join(old_new3, shore_dis, by='site')
+
+old_new3<- old_new3[,-2]
+
+names(old_new3)<- c("site_year" ,"species"  , "year"  ,    "abun" ,     "site" )
+
+torm<- which(is.na(old_new3$site))
+
+old_new3<- old_new3[-c(torm),]
+
+torm<- which(old_new3$year==2019)
+
+old_new3<- old_new3[-c(torm),]
+
+
+#ok now check if all the species match the traits species
+fish_sp<- unique(old_new3$species)
+
+traits_sp<- rownames(traits18)
+
+which( ! fish_sp %in% traits_sp )
+
+fish_sp[(which( ! fish_sp %in% traits_sp ))]
+
+traits_sp[(which(! traits_sp %in% fish_sp))]
+
+#10 species not in traits database. But thats ok. lets get rid of them for ease for now
+missing_sp<- fish_sp[(which( ! fish_sp %in% traits_sp ))]
+
+torm<- which(old_new3$species %in% missing_sp )
+
+old_new3<- old_new3[-c(torm),]
+
+#ok now old_new3 is clean 
+#split into individual site dfs 
+
+sites<- unique(old_new3$site)
+
+sites
+
+#MAKE SURE YOU KEEP SITES IN THE SAME ORDER 
+
+#ok split the species~site list into individual sites 
+for ( i in 1: length(sites)){
+  select<- which(old_new3$site==sites[i])
+  individual_site<- old_new3[select,]
+  assign(paste0('site_sp', LETTERS[i]),individual_site) 
+  
+}
+
+site_key<-data.frame('sites'=sites, letter=LETTERS[1:length(sites)])
+
+
+#ok now trait db for each site
+site_sp_list<-lapply(ls(pattern="site_sp"),get)
+
+length(site_sp_list)
+
+i=1
+
+for ( i in 1:length(site_sp_list)){
+  tokeep<- which(rownames(traits18) %in% site_sp_list[[i]]$species)
+  traits_site<-traits18[tokeep, ]
+  assign (paste0 ('traits_site_', LETTERS[i]), traits_site)
+}
+
+#go here----
+
+traits_site_list<-lapply(ls(pattern='traits_site_'), get)
+
+#ok now have a traits list for both years for the sites
+
+
+##NOW NEED TO LOOP THIS 
+#PCOA of site-traits----
+
+#ok write a mega function to do this all?
+
+# ok get the gower distances
+
+fish_site_gow<- lapply(traits_site_list , gowdis)
+
+fish_site_gow<- lapply (fish_site_gow, cailliez)
+
+#now PCoA
+PCo_func<- function(data){
+  dudi1<-dudi.pco(d=data, scannf = FALSE, nf = 4 )
+  return(dudi1)
+}
+
+PCo_fish_site<- lapply(fish_site_gow, PCo_func)
+
+i=1
+
+#make dfs
+for ( i in 1: length(PCo_fish_site)){
+  df<- data.frame(PCo_fish_site[[i]]$li, traits_site_list[[i]] )
+  df$species<-row.names(traits_site_list[[i]])
+  assign(paste0('pco_dfs', LETTERS[i]), df) 
+}
+
+pco_df_sites<- lapply(ls(pattern='pco_dfs'), get)
+
+
+#make global hulls
+glob_hull_func<- function( data){
+  glob_hull<- data[chull(data$A1, data$A2),]
+  return(glob_hull)
+}
+
+glob_hull_sites<- lapply(pco_df_sites, glob_hull_func)
+
+#ok now plot glob hulls
+
+# code to setup ggplot enviroment
+par(mfrow=c(1,1))
+ppp <- ggplot() + coord_fixed() +
+  labs(x="PCoA 1", y="PCoA 2") +
+  geom_hline(yintercept=0, ) +#col="darkgrey"
+  geom_vline(xintercept=0, )#col="darkgrey"
+
+ppp
+
+# plot global hull
+i=1
+
+for (i in 1:length(glob_hull_sites)){
+  p1<-ppp+geom_polygon(data=glob_hull_sites[[i]],aes(x=A1,y=A2),fill=NA,colour="grey70")+
+    geom_point(data=pco_df_sites[[i]], aes(x=A1, y=A2), colour='grey50')+theme_bw()
+  assign(paste0('glob_hull_plot', LETTERS[i]), p1)
+}
+
+p1
+glob_hull_list<- lapply(ls(pattern='glob_hull_plot'), get)
+
+library(gridExtra)
+
+glob_hull_plotB
+
+n<-length(glob_hull_list)
+nCol<-floor(sqrt(n))
+do.call('grid.arrange', c(glob_hull_list, ncol=nCol))
+
+#ok that's plotted now work out the subsetted hulls----
+
+
+for (i in 1:length(site_sp_list)){
+  sp_75<- site_sp_list[[i]]$species[site_sp_list[[i]]$year==1976]
+  sp_75<-data.frame('species'=sp_75, abun_75=1)
+  sp_18<-site_sp_list[[i]]$species[site_sp_list[[i]]$year==2018]
+  sp_18<-data.frame('species'=sp_18, abun_18=1)
+  all_sp<-data.frame('species'=pco_df_sites[[i]]$species)
+  
+  all_sp<-left_join(all_sp, sp_75, by='species')
+  all_sp<-left_join(all_sp, sp_18, by='species')
+  
+  pco.dfs<- left_join(pco_df_sites[[i]], all_sp, by='species')
+  
+  assign (paste0('pco_dfs_',LETTERS[[i]]),pco.dfs)
+}
+
+
+pco_df_sites<- lapply(ls(pattern = 'pco.dfs_'), get)
+
+#ok now subset
+subset75_func<- function(data){
+  subset_75<- data[! is.na(data$abun_75),]
+  return(subset_75)
+}
+
+pco_75_sites<-lapply(pco_df_sites, subset75_func)  
+
+subset18_func<- function(data){
+  subset_18<- data[! is.na(data$abun_18),]
+  return(subset_18)
+}
+
+pco_18_sites<-lapply(pco_df_sites, subset18_func)
+
+
+#ok now we have subsetted we can plot
+old_hull_func<- function(data){
+  old_hull<-data[chull(data$A1, data$A2),]
+  return(old_hull)
+}
+
+old_hull_list<-lapply(pco_75_sites, old_hull_func) 
+
+hull18_func<- function(data){
+  hull_18<- data[chull(data$A1, data$A2),]
+  return(hull_18)
+}
+
+new_hull_list<- lapply(pco_18_sites, hull18_func)
+
+
+
+
+for (i in 1:length(glob_hull_sites)){
+  x<-site_key[i,1]
+  title<-paste0('Site ', x)
+  p1<- ppp+
+   # geom_polygon(data=glob_hull_sites[[i]], aes(x=A1,y=A2),fill=NA,colour="grey70")+
+    geom_point(data=pco_df_sites[[i]], aes(x=A1, y=A2), colour='grey50')+
+    geom_polygon(data=old_hull_list[[i]],aes(x=A1,y=A2),alpha=0.08, fill='#F8766D',colour='#F8766D')+
+    geom_polygon(data=new_hull_list[[i]],aes(x=A1,y=A2),alpha=0.08, fill='#00BFC4',colour='#00BFC4' )+
+    ggtitle(title)+
+    theme_bw()
+  assign(paste0('all_hulls_plot',LETTERS[i]),p1)
+   
+}
+
+all_hulls_plotD
+
+fish_site_hulls<- lapply(ls(pattern='all_hulls_plot'), get)
+
+#NOW PLOT
+
+
+glob_hull_plotB
+
+n<-length(fish_site_hulls)
+nCol<-floor(sqrt(n))
+do.call('grid.arrange', c(fish_site_hulls, ncol=nCol)) ############ok plots done now work out hull volumes ############----
+
+
+#reordered plot
+ordered_fish_plot<- list(all_hulls_plotI, all_hulls_plotA, all_hulls_plotK, all_hulls_plotB, all_hulls_plotE, all_hulls_plotJ,
+                         all_hulls_plotC, all_hulls_plotL, all_hulls_plotD, all_hulls_plotH, all_hulls_plotF, all_hulls_plotG,
+                         all_hulls_plotM, all_hulls_plotN)
+
+
+n<-length(fish_site_hulls)
+nCol<-floor(sqrt(n))
+do.call('grid.arrange', c(ordered_fish_plot, ncol=nCol))
+
+
+#ok now work out the hull volumes
+library(splancs)
+
+site_key$volume75<-1
+site_key$volume18<-1
+
+for ( i in 1:length(old_hull_list)){
+  old_hull<-old_hull_list[[i]][,c(1,2)]
+  old_hull_area<- as.matrix(old_hull) %>% areapl()
+  
+  new_hull<- new_hull_list[[i]][,c(1,2)]
+  new_hull_area<- as.matrix(new_hull) %>% areapl()
+
+site_key[i,3]<-old_hull_area
+site_key[i,4]<-new_hull_area
+  
+}
+
+#now plot
+fish_areas<-data.frame(year='1975', area=1)
+fish_areas[c(1:14),1]<-1975
+fish_areas[c(15:28),1]<-2018
+
+fish_areas[c(1:14),2]<- site_key[,3]
+fish_areas[c(15:28),2]<- site_key[,4]
+
+fish_areas$year<-as.factor(fish_areas$year)
+
+ggplot(fish_areas, aes(x=year, y=area))+
+  geom_boxplot()
+
+t.test(site_key$volume75, site_key$volume18, paired = T)
+
+
+
+####OK THIS IS DONE repeat for coral tomorrow ---- 
+
+gower_disA<- gowdis(traits_siteA)
+
+gower_disA<- cailliez(gower_disA)
+
+pcA<- dudi.pco(d=gower_disA, scannf = FALSE, nf = 4 )
+
+
+scatter(pcA)
+
+#work out the eigen values
+sum(pcA$eig)
+
+eig<-pcA$eig
+rel_eig<- eig/(sum(pcA$eig))
+sum(rel_eig)
+rel_eig
+
+
+
+barplot(rel_eig)
+
+
+pcA.dfs <- data.frame(pcA$li, traits_siteA) # combine PCoA axes with trait/site data
+# make species column so that data can be subset using list of species .e.g per site
+pcA.dfs$species<-row.names(pcA.dfs)
+
+
+#make global hull
+glob_hullA<-pcA.dfs[chull(pcA.dfs$A1, pcA.dfs$A2),]
+
+# code to setup ggplot enviroment
+ppp <- ggplot() + coord_fixed() +
+  labs(x="PCoA 1 (5.3%)", y="PCoA 2 (3.8%)") +
+  geom_hline(yintercept=0, col="darkgrey") +
+  geom_vline(xintercept=0, col="darkgrey")
+
+# plot global hull
+ppp+
+  geom_polygon(data=glob_hullA,aes(x=A1,y=A2),fill=NA,colour="grey70")+
+  geom_point(data=pcA.dfs, aes(x=A1, y=A2), colour='grey50')+theme_bw()
+
+#ok now subset for year data
+sp_a_75<- site_spA$species[site_spA$year==1976]
+sp_a_75<-data.frame('species'=sp_a_75, abun_75=1)
+
+sp_a_18<- site_spA$species[site_spA$year==2018]
+sp_a_18<-data.frame('species'=sp_a_18, abun_18=1)
+
+all_spA<- data.frame('species'=pcA.dfs$species)
+
+
+all_spA<- left_join(all_spA, sp_a_75, by="species")
+all_spA<- left_join(all_spA, sp_a_18, by='species')
+
+#subset for year data
+#left join to traits final
+pcA.dfs<- left_join(pcA.dfs, all_spA, by='species')
+
+# subset for 76, 18 data
+pcA_75<-pcA.dfs[ ! is.na( pcA.dfs$abun_75),]
+pcA_18<-pcA.dfs[ ! is.na(pcA.dfs$abun_18),]
+
+
+# make regional hull
+old_hull<-pcA_75[chull(pcA_75$A1, pcA_75$A2),]
+hull18<-pcA_18[chull(pcA_18$A1, pcA_18$A2),]
+
+
+# plot regional trait space and hull inside global
+
+ppp+
+  geom_polygon(data=glob_hullA,aes(x=A1,y=A2),fill=NA,colour="grey70")+
+  geom_point(data=pcA.dfs, aes(x=A1, y=A2), colour='grey70')+
+  geom_polygon(data=old_hull,aes(x=A1,y=A2),alpha=0.08, fill='#F8766D',colour='#F8766D')+
+  geom_polygon(data=hull18,aes(x=A1,y=A2),alpha=0.08, fill='#00BFC4',colour='#00BFC4' )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#for maria----
 gen_pred<- pc2.dfs
 
 gen_pred<- gen_pred[ ! gen_pred$yearcount=='old',]
@@ -2601,8 +2987,292 @@ pca_new_lab<- pca_new+ geom_text_repel(data = new_coral_hull, aes(x=A1, y=A2, la
 
 pca_new_lab
 
+#now do site trait based PCoA for coral ----
+#rename with new site names
+coral4<- coral3
 
-#now do plot by depth 
+which(coral_long_18_sum$Site==5) #HERE---- 
+
+coral_4<-coral4 %>% separate(site_year, into=c('site', 'year'), sep="_")
+
+#rename site matrix with the new names 
+
+coral_4$site<-as.character(coral_4$site)
+
+coral_4<- left_join(coral_4, shore_dis, by='site')
+
+coral_4<- coral_4[,-1]
+
+names(coral_4)<-c( "year"   ,   "Genus"   ,  "Abundance", "site" )
+
+torm<- which(coral_4$site==3)
+coral_4[which(coral_4$site==3),] # - sort out site 3 (old 5)
+coral_4<-coral_4[-c(torm),] 
+
+length(coral_4$Genus)
+names(coral_4)
+
+site_3<- data.frame(year=c(2018, 1976,1976,1976), Genus=c('Astrea', 'Favites','Montipora','Stylophora'),Abundance=1, site=c(3,3,3,3))
+site_3$year<-as.character(site_3$year)
+site_3$site<-as.integer(site_3$site)
+
+coral_4<- bind_rows(coral_4, site_3)
+
+#now check if it matches trait species
+coral_gen<-unique(coral_4$Genus)
+
+traits_sp<- unique(rownames(coral_traits))
+
+which( ! coral_gen %in% traits_sp )
+
+which(! (traits_sp %in% coral_gen))
+
+
+#ok now coral4 is clean
+
+#split into individual site dfs 
+
+sites<- unique(coral_4$site)
+
+sites<-sort(sites)
+
+sites
+#MAKE SURE YOU KEEP SITES IN THE SAME ORDER 
+
+#ok split the species~site list into individual sites 
+for ( i in 1: length(sites)){
+  select<- which(coral_4$site==sites[i])
+  individual_site<- coral_4[select,]
+  assign(paste0('site_coral.', LETTERS[i]),individual_site) 
+  
+}
+
+site_key_coral<-data.frame('sites'=sites, letter=LETTERS[1:length(sites)])
+
+
+#ok now trait db for each site
+site_gen_list<-lapply(ls(pattern="site_coral"),get)
+
+length(site_gen_list)
+
+i=1
+
+for ( i in 1:length(site_gen_list)){
+  tokeep<- which(rownames(coral_traits) %in% site_gen_list[[i]]$Genus)
+  traits_site<-coral_traits[tokeep, ]
+  assign (paste0 ('c_traits_site_', LETTERS[i]), traits_site)
+}
+
+c_traits_site_list<-lapply(ls(pattern='c_traits_site_'), get)
+
+#ok now have a traits list for both years for the sites
+
+
+##NOW NEED TO LOOP THIS 
+#PCOA of site-traits----
+
+#ok write a mega function to do this all?
+
+# ok get the gower distances
+
+c_site_gow<- lapply(c_traits_site_list , gowdis)
+
+c_site_gow<- lapply (c_site_gow, cailliez)
+
+#now PCoA
+PCo_func<- function(data){
+  dudi1<-dudi.pco(d=data, scannf = FALSE, nf = 4 )
+  return(dudi1)
+}
+
+PCo_c_site<- lapply(c_site_gow, PCo_func)
+
+i=1
+
+#make dfs
+for ( i in 1: length(PCo_c_site)){
+  df<- data.frame(PCo_c_site[[i]]$li, c_traits_site_list[[i]] )
+  df$Genus<-row.names(c_traits_site_list[[i]])
+  assign(paste0('c_pco_dfs', LETTERS[i]), df) 
+}
+
+c_pco_df_sites<- lapply(ls(pattern='c_pco_dfs'), get)
+
+
+#make global hulls
+glob_hull_func<- function( data){
+  glob_hull<- data[chull(data$A1, data$A2),]
+  return(glob_hull)
+}
+
+c_glob_hull_sites<- lapply(c_pco_df_sites, glob_hull_func)
+
+#ok now plot glob hulls
+
+# code to setup ggplot enviroment
+par(mfrow=c(1,1))
+ppp <- ggplot() + coord_fixed() +
+  labs(x="PCoA 1", y="PCoA 2") +
+  geom_hline(yintercept=0, ) +#col="darkgrey"
+  geom_vline(xintercept=0, )#col="darkgrey"
+
+ppp
+
+# plot global hull
+i=1
+
+for (i in 1:length(c_glob_hull_sites)){
+  p1<-ppp+geom_polygon(data=c_glob_hull_sites[[i]],aes(x=A1,y=A2),fill=NA,colour="grey70")+
+    geom_point(data=c_pco_df_sites[[i]], aes(x=A1, y=A2), colour='grey50')+theme_bw()
+  assign(paste0('c_glob_hull_plot', LETTERS[i]), p1)
+}
+
+c_glob_hull_plotA
+
+c_glob_hull_list<- lapply(ls(pattern='c_glob_hull_plot'), get)
+
+
+
+n<-length(c_glob_hull_list)
+nCol<-floor(sqrt(n))
+do.call('grid.arrange', c(c_glob_hull_list, ncol=nCol))
+
+#ok that's plotted now work out the subsetted hulls----
+
+i=3 ####come back here----
+
+for (i in 1:length(site_gen_list)){
+  c_sp_75<- site_gen_list[[i]]$Genus[site_gen_list[[i]]$year==1976]
+  c_sp_75<-data.frame('Genus'=c_sp_75, abun_75=1)
+  c_sp_18<-site_gen_list[[i]]$Genus[site_gen_list[[i]]$year==2018]
+  c_sp_18<-data.frame('Genus'=c_sp_18, abun_18=1)
+  c_all_sp<-data.frame('Genus'=c_pco_df_sites[[i]]$Genus)
+  
+  c_all_sp<-left_join(c_all_sp, c_sp_75, by='Genus')
+  c_all_sp<-left_join(c_all_sp, c_sp_18, by='Genus')
+  
+  c_pco.dfs<- left_join(c_pco_df_sites[[i]], c_all_sp, by='Genus')
+  
+  assign (paste0('c_pco_dfs_',LETTERS[[i]]),c_pco.dfs)
+  print (i)
+}
+
+
+pco_df_sites<- lapply(ls(pattern = 'pco.dfs_'), get)
+
+#ok now subset
+subset75_func<- function(data){
+  subset_75<- data[! is.na(data$abun_75),]
+  return(subset_75)
+}
+
+pco_75_sites<-lapply(pco_df_sites, subset75_func)  
+
+subset18_func<- function(data){
+  subset_18<- data[! is.na(data$abun_18),]
+  return(subset_18)
+}
+
+pco_18_sites<-lapply(pco_df_sites, subset18_func)
+
+
+#ok now we have subsetted we can plot
+old_hull_func<- function(data){
+  old_hull<-data[chull(data$A1, data$A2),]
+  return(old_hull)
+}
+
+old_hull_list<-lapply(pco_75_sites, old_hull_func) 
+
+hull18_func<- function(data){
+  hull_18<- data[chull(data$A1, data$A2),]
+  return(hull_18)
+}
+
+new_hull_list<- lapply(pco_18_sites, hull18_func)
+
+
+
+
+for (i in 1:length(glob_hull_sites)){
+  x<-site_key[i,1]
+  title<-paste0('Site ', x)
+  p1<- ppp+
+    # geom_polygon(data=glob_hull_sites[[i]], aes(x=A1,y=A2),fill=NA,colour="grey70")+
+    geom_point(data=pco_df_sites[[i]], aes(x=A1, y=A2), colour='grey50')+
+    geom_polygon(data=old_hull_list[[i]],aes(x=A1,y=A2),alpha=0.08, fill='#F8766D',colour='#F8766D')+
+    geom_polygon(data=new_hull_list[[i]],aes(x=A1,y=A2),alpha=0.08, fill='#00BFC4',colour='#00BFC4' )+
+    ggtitle(title)+
+    theme_bw()
+  assign(paste0('all_hulls_plot',LETTERS[i]),p1)
+  
+}
+
+all_hulls_plotD
+
+fish_site_hulls<- lapply(ls(pattern='all_hulls_plot'), get)
+
+#NOW PLOT
+
+
+glob_hull_plotB
+
+n<-length(fish_site_hulls)
+nCol<-floor(sqrt(n))
+do.call('grid.arrange', c(fish_site_hulls, ncol=nCol)) ############ok plots done now work out hull volumes ############----
+
+
+#reordered plot
+ordered_fish_plot<- list(all_hulls_plotI, all_hulls_plotA, all_hulls_plotK, all_hulls_plotB, all_hulls_plotE, all_hulls_plotJ,
+                         all_hulls_plotC, all_hulls_plotL, all_hulls_plotD, all_hulls_plotH, all_hulls_plotF, all_hulls_plotG,
+                         all_hulls_plotM, all_hulls_plotN)
+
+
+n<-length(fish_site_hulls)
+nCol<-floor(sqrt(n))
+do.call('grid.arrange', c(ordered_fish_plot, ncol=nCol))
+
+
+#ok now work out the hull volumes
+library(splancs)
+
+site_key$volume75<-1
+site_key$volume18<-1
+
+for ( i in 1:length(old_hull_list)){
+  old_hull<-old_hull_list[[i]][,c(1,2)]
+  old_hull_area<- as.matrix(old_hull) %>% areapl()
+  
+  new_hull<- new_hull_list[[i]][,c(1,2)]
+  new_hull_area<- as.matrix(new_hull) %>% areapl()
+  
+  site_key[i,3]<-old_hull_area
+  site_key[i,4]<-new_hull_area
+  
+}
+
+#now plot
+fish_areas<-data.frame(year='1975', area=1)
+fish_areas[c(1:14),1]<-1975
+fish_areas[c(15:28),1]<-2018
+
+fish_areas[c(1:14),2]<- site_key[,3]
+fish_areas[c(15:28),2]<- site_key[,4]
+
+fish_areas$year<-as.factor(fish_areas$year)
+
+ggplot(fish_areas, aes(x=year, y=area))+
+  geom_boxplot()
+
+t.test(site_key$volume75, site_key$volume18, paired = T)
+
+
+
+
+
+
+
+#now do plot by depth ----
 #get the average depth and abundance of genera between the two years
 #ok can now work out the average depths for the corals: 
 names(coral_long_76)
