@@ -3158,7 +3158,7 @@ for (i in 1:length(site_gen_list)){
 }
 
 
-pco_df_sites<- lapply(ls(pattern = 'pco.dfs_'), get)
+c_pco_df_sites<- lapply(ls(pattern = 'c_pco.dfs_'), get)
 
 #ok now subset
 subset75_func<- function(data){
@@ -3166,14 +3166,14 @@ subset75_func<- function(data){
   return(subset_75)
 }
 
-pco_75_sites<-lapply(pco_df_sites, subset75_func)  
+c_pco_75_sites<-lapply(c_pco_df_sites, subset75_func)  
 
 subset18_func<- function(data){
   subset_18<- data[! is.na(data$abun_18),]
   return(subset_18)
 }
 
-pco_18_sites<-lapply(pco_df_sites, subset18_func)
+c_pco_18_sites<-lapply(c_pco_df_sites, subset18_func)
 
 
 #ok now we have subsetted we can plot
@@ -3182,72 +3182,62 @@ old_hull_func<- function(data){
   return(old_hull)
 }
 
-old_hull_list<-lapply(pco_75_sites, old_hull_func) 
+c_old_hull_list<-lapply(c_pco_75_sites, old_hull_func) 
 
 hull18_func<- function(data){
   hull_18<- data[chull(data$A1, data$A2),]
   return(hull_18)
 }
 
-new_hull_list<- lapply(pco_18_sites, hull18_func)
+c_new_hull_list<- lapply(c_pco_18_sites, hull18_func)
 
 
 
 
-for (i in 1:length(glob_hull_sites)){
-  x<-site_key[i,1]
+for (i in 1:length(c_glob_hull_sites)){
+  x<-site_key_coral[i,1]
   title<-paste0('Site ', x)
   p1<- ppp+
     # geom_polygon(data=glob_hull_sites[[i]], aes(x=A1,y=A2),fill=NA,colour="grey70")+
-    geom_point(data=pco_df_sites[[i]], aes(x=A1, y=A2), colour='grey50')+
-    geom_polygon(data=old_hull_list[[i]],aes(x=A1,y=A2),alpha=0.08, fill='#F8766D',colour='#F8766D')+
-    geom_polygon(data=new_hull_list[[i]],aes(x=A1,y=A2),alpha=0.08, fill='#00BFC4',colour='#00BFC4' )+
+    geom_point(data=c_pco_df_sites[[i]], aes(x=A1, y=A2), colour='grey50')+
+    geom_polygon(data=c_old_hull_list[[i]],aes(x=A1,y=A2),alpha=0.08, fill='#F8766D',colour='#F8766D')+
+    geom_polygon(data=c_new_hull_list[[i]],aes(x=A1,y=A2),alpha=0.08, fill='#00BFC4',colour='#00BFC4' )+
     ggtitle(title)+
     theme_bw()
-  assign(paste0('all_hulls_plot',LETTERS[i]),p1)
+  assign(paste0('c_all_hulls_plot',LETTERS[i]),p1)
   
 }
 
-all_hulls_plotD
+c_all_hulls_plotD
 
-fish_site_hulls<- lapply(ls(pattern='all_hulls_plot'), get)
+c_site_hulls<- lapply(ls(pattern='c_all_hulls_plot'), get)
 
 #NOW PLOT
 
 
-glob_hull_plotB
-
-n<-length(fish_site_hulls)
+n<-length(c_site_hulls)
 nCol<-floor(sqrt(n))
-do.call('grid.arrange', c(fish_site_hulls, ncol=nCol)) ############ok plots done now work out hull volumes ############----
+do.call('grid.arrange', c(c_site_hulls, ncol=nCol)) ############ok plots done now work out hull volumes ############----
 
-
-#reordered plot
-ordered_fish_plot<- list(all_hulls_plotI, all_hulls_plotA, all_hulls_plotK, all_hulls_plotB, all_hulls_plotE, all_hulls_plotJ,
-                         all_hulls_plotC, all_hulls_plotL, all_hulls_plotD, all_hulls_plotH, all_hulls_plotF, all_hulls_plotG,
-                         all_hulls_plotM, all_hulls_plotN)
-
-
-n<-length(fish_site_hulls)
-nCol<-floor(sqrt(n))
-do.call('grid.arrange', c(ordered_fish_plot, ncol=nCol))
 
 
 #ok now work out the hull volumes
-library(splancs)
 
-site_key$volume75<-1
-site_key$volume18<-1
 
-for ( i in 1:length(old_hull_list)){
-  old_hull<-old_hull_list[[i]][,c(1,2)]
-  old_hull_area<- as.matrix(old_hull) %>% areapl()
+site_key_coral$volume75<-1
+site_key_coral$volume18<-1
+
+i=1
+
+for ( i in 1:length(c_old_hull_list)){
+  c_old_hull<-c_old_hull_list[[i]][,c(1,2)]
+  c_old_hull_area<- as.matrix(c_old_hull) %>% areapl()
   
-  new_hull<- new_hull_list[[i]][,c(1,2)]
-  new_hull_area<- as.matrix(new_hull) %>% areapl()
+  c_new_hull<- c_new_hull_list[[i]][,c(1,2)]
+  c_new_hull_area<- as.matrix(c_new_hull) %>% areapl()
   
-  site_key[i,3]<-old_hull_area
-  site_key[i,4]<-new_hull_area
+  site_key_coral[i,3]<-c_old_hull_area
+  site_key_coral[i,4]<-c_new_hull_area
   
 }
 
