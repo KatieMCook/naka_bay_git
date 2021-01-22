@@ -1572,6 +1572,7 @@ ordered_fish_plot<- list(all_hulls_plotI, all_hulls_plotA, all_hulls_plotK, all_
                          all_hulls_plotC, all_hulls_plotL, all_hulls_plotD, all_hulls_plotH, all_hulls_plotF, all_hulls_plotG,
                          all_hulls_plotM, all_hulls_plotN)
 
+#####start here----
 
 n<-length(fish_site_hulls)
 nCol<-floor(sqrt(n))
@@ -1579,6 +1580,7 @@ do.call('grid.arrange', c(ordered_fish_plot, ncol=nCol))
 
 
 #ok now work out the hull volumes
+
 library(splancs)
 
 site_key$volume75<-1
